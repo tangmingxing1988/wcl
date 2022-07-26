@@ -130,12 +130,14 @@ let findReports = function(){
         .then(function(body){
         let oldContent = fs.readFileSync('reports.csv', 'utf-8').split("\r\n").map(c => c.trim()).filter(d => d.length == 16);
           let content = [];
+          let pageLength = 0;
           let doc = parser.parseFromString(body, "text/html");
           for(let cell of doc.getElementsByClassName("description-cell")){
               for(let link of cell.getElementsByTagName("a")){
                 let href = link.getAttribute("href");
                 if(href.includes("/reports/")){
                     let code = href.substring(href.lastIndexOf("/") + 1);
+                    pageLength++;
                     if(oldContent.indexOf(code) < 0){
                         content.push(code);
                     }
@@ -144,7 +146,7 @@ let findReports = function(){
           }
 
         fs.appendFileSync("reports.csv", "\r\n" + content.join("\r\n"));
-        if(content.length >= 100){
+        if(pageLength >= 100){
             page++;
             setTimeout(() => {
                 findReports();                
@@ -158,7 +160,7 @@ let findReports = function(){
 let startOrder = 0;
 let playerOrder = 0;
 let startOrderOffset = 0;
-let codes = []; //Array.from(new Set(codeStr.split("\r\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
+let codes = [];
 let delay = 2000;
 let startRun = function(){
     //分为三种情况：还未完成、已经完成、正在进行
@@ -192,6 +194,7 @@ let startRun = function(){
                 let oldCodes = lines.map(c => c.split(",")[7]);
                 codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\r\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
                 if(codes.length > 0){
+                    console.log("共" + codes.length + "个code，起始点" + startOrder + "，起始点偏移" + startOrderOffset + "，玩家点" + playerOrder);
                     startOrder = 0;
                 }else{
                     delay = 60 * 1000;
