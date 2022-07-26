@@ -128,7 +128,7 @@ let findReports = function(){
         "method": "GET"
       }).then(response => response.text())
         .then(function(body){
-        let oldContent = fs.readFileSync('reports.csv', 'utf-8').split("\r\n").map(c => c.trim()).filter(d => d.length == 16);
+        let oldContent = fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16);
           let content = [];
           let pageLength = 0;
           let doc = parser.parseFromString(body, "text/html");
@@ -185,14 +185,14 @@ let startRun = function(){
             analyze(code);
         }else{ // code跑完了
             if(page == 0){//新的report结束了或者未开始
-                let lines = fs.readFileSync('data.csv', 'utf-8').split("\r\n").filter(c => c.length > 5);
+                let lines = fs.readFileSync('data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
                 if(lines.length > 1){
                     let lastLine = lines[lines.length - 1].split(",");
                     startOrderOffset = parseInt(lastLine[1]);
                     playerOrder = parseInt(lastLine[0]);
                 }
                 let oldCodes = lines.map(c => c.split(",")[7]);
-                codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\r\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
+                codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
                 if(codes.length > 0){
                     console.log("共" + codes.length + "个code，起始点" + startOrder + "，起始点偏移" + startOrderOffset + "，玩家点" + playerOrder);
                     startOrder = 0;
