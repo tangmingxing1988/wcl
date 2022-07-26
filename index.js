@@ -161,7 +161,7 @@ let startOrder = 0;
 let playerOrder = 0;
 let startOrderOffset = 0;
 let codes = [];
-let delay = 2000;
+let delay = 500;
 let startRun = function(){
     //分为三种情况：还未完成、已经完成、正在进行
     if(phase >= 2 && finishKeys.length == itemKeys.length){ //已完成
