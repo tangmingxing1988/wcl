@@ -186,14 +186,15 @@ let startRun = function(){
         }else{ // code跑完了
             if(page == 0){//新的report结束了或者未开始
                 let lines = fs.readFileSync('data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
-                if(lines.length > 1){
-                    let lastLine = lines[lines.length - 1].split(",");
-                    startOrderOffset = parseInt(lastLine[1]);
-                    playerOrder = parseInt(lastLine[0]);
-                }
                 let oldCodes = lines.map(c => c.split(",")[7]);
                 codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
                 if(codes.length > 0){
+                    if(lines.length > 1){
+                        let lastLine = lines[lines.length - 1].split(",");
+                        startOrderOffset = parseInt(lastLine[1]);
+                        playerOrder = parseInt(lastLine[0]);
+                    }
+    
                     console.log("共" + codes.length + "个code，起始点" + startOrder + "，起始点偏移" + startOrderOffset + "，玩家点" + playerOrder);
                     startOrder = 0;
                 }else{
