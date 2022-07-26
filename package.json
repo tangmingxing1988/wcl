@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "dom-parser": "^0.1.6",
+    "fs": "^0.0.1-security",
+    "graphql-request": "^4.3.0",
+    "node-fetch": "^3.2.9"
+  }
+}
