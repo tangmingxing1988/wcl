@@ -162,6 +162,7 @@ let playerOrder = 0;
 let startOrderOffset = 0;
 let codes = [];
 let delay = 500;
+let fetched = new Date().getTime();
 let startRun = function(){
     //分为三种情况：还未完成、已经完成、正在进行
     if(phase >= 2 && finishKeys.length == itemKeys.length){ //已完成
@@ -174,6 +175,7 @@ let startRun = function(){
             fs.appendFileSync("data.csv", output + "\r\n");
         }
 
+        fetched = new Date().getTime();
         startOrder++;
         items = {};
         itemKeys = [];
@@ -185,6 +187,7 @@ let startRun = function(){
             analyze(code);
         }else{ // code跑完了
             if(page == 0){//新的report结束了或者未开始
+                fetched = new Date().getTime();
                 let lines = fs.readFileSync('data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
                 let oldCodes = lines.map(c => c.split(",")[7]);
                 codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
@@ -204,6 +207,13 @@ let startRun = function(){
                 }
             }
         }
+    }
+    
+    let cost = new Date().getTime() - fetched;
+    console.log("本轮目前耗时：" + cost/1000 + "秒")
+    if(cost > 20 * 60 * 1000){
+        console.log("程序卡死")
+        process.exit(1);
     }
 
     setTimeout(() => {
