@@ -1,4 +1,4 @@
-import { getBuffs, getReport, getTanks, getAttribute, getDeaths, getReduce, getDebuffs, getAllBuffs } from './api.js';
+import { getBuffs, getReport, getTanks, getAttribute, getDeaths, getReduce, getDebuffs, getAllBuffs, getReduceEvents } from './api.js';
 import fs from 'fs';
 import fetch from "node-fetch";
 import DOMParser from 'dom-parser';
@@ -25,6 +25,7 @@ let analyze = function (code) {
         //列举所有fights(仅仅是布胖的725)
         let fights = report.reportData.report.fights;
         let serverName = report.reportData.report.rankedCharacters ? report.reportData.report.rankedCharacters[0].server.name : '--';
+        let guild = report.reportData.report.guild ? report.reportData.report.guild.faction.id : 0;
         let region = report.reportData.report.region.name;
         let startTime = report.reportData.report.startTime;
         let endTime = report.reportData.report.endTime;
@@ -35,7 +36,7 @@ let analyze = function (code) {
                 let druidTanks = [];
                 for (let player of players) {
                     if (player.icon == "Druid-Guardian" && player.total > 100000) {
-                        items[code + ":" + fight.id + ":" + player.id] = { code: code, region: region, startTime: startTime, endTime: endTime, id: fight.id, guid: player.guid, playerId: player.id, fightStartTime: fight.startTime, fightEndTime: fight.endTime, kill: fight.kill, serverName: serverName, playerName: player.name };
+                        items[code + ":" + fight.id + ":" + player.id] = { code: code, region: region, guild: guild, startTime: startTime, endTime: endTime, id: fight.id, guid: player.guid, playerId: player.id, fightStartTime: fight.startTime, fightEndTime: fight.endTime, kill: fight.kill, serverName: serverName, playerName: player.name };
                         druidTanks.push(player);
                         itemKeys.push(code + ":" + fight.id + ":" + player.id)
                     }
@@ -44,13 +45,24 @@ let analyze = function (code) {
 
 
                 getAllBuffs(code, fight.id, fight.startTime, fight.endTime).then(function (allBuffs) {
-                    let theBuffs = allBuffs.reportData.report.table.data.auras.map(aura => aura.guid);
-                    let race = "";
-                    if (allianceBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
-                        race += "联盟";
+                    let faction = "";
+                    if(guild == 1){
+                        faction = "联盟";
+                    }else if(guild == 2){
+                        faction = "部落";
                     }
-                    if (hordeBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
-                        race += "部落";
+                    if(guild <= 0){
+                        let theBuffs = allBuffs.reportData.report.table.data.auras.map(aura => aura.guid);
+                        if (allianceBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
+                            faction += "联盟";
+                        }
+                        if (hordeBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
+                            faction += "部落";
+                        }
+
+                        if(faction.length <= 0){
+                            faction = "未知";
+                        }
                     }
 
                     for (let player of druidTanks) {
@@ -58,7 +70,7 @@ let analyze = function (code) {
                         getBuffs(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (buffs) {
                             let key = code + ":" + fight.id + ":" + player.id;
                             let auras = buffs.reportData.report.table.data.auras;
-                            items[key]["race"] = race;
+                            items[key]["faction"] = faction;
                             items[key]["pain"] = auras.filter(aura => aura.guid == PainSuppression).map(aura => aura.totalUses).reduce(function (prev, curr, idx, arr) {
                                 return prev + curr;
                             }, 0);
@@ -95,16 +107,24 @@ let analyze = function (code) {
                                             items[key]['deathTime'] = 0;
                                         }
 
-                                        //获取免伤记录
-                                        getReduce(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (red) {
-                                            let redu = red.reportData.report.table.data.entries;
-                                            if (redu.length > 0) {
-                                                items[key]["total"] = redu[0].total;
-                                                items[key]["totalReduced"] = redu[0].totalReduced;
-                                                items[key]["uses"] = redu[0].uses;
-                                                items[key]["missCount"] = redu[0].missCount;
-                                                finishKeys.push(key);
-                                            }
+                                        //获取免伤详情
+                                        getReduceEvents(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (redEvents) {
+                                            let reduceEvents = redEvents.reportData.report.events.data;
+                                            items[key]["maxArmor"] = reduceEvents.map(c => c.armor).filter(c => c).length > 0 ? Math.max(...reduceEvents.map(c => c.armor).filter(c => c)) : 0;
+                                            items[key]["item"] = reduceEvents.map(c => c.itemLevel).filter(c => c).length > 0 ? Math.max(...reduceEvents.map(c => c.itemLevel).filter(c => c)) : 0;
+
+                                            //获取免伤记录
+                                            getReduce(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (red) {
+                                                let redu = red.reportData.report.table.data.entries;
+                                                if (redu.length > 0) {
+                                                    items[key]["total"] = redu[0].total;
+                                                    items[key]["totalReduced"] = redu[0].totalReduced;
+                                                    items[key]["uses"] = redu[0].uses;
+                                                    items[key]["missCount"] = redu[0].missCount;
+                                                    finishKeys.push(key);
+                                                }
+                                            });
+
                                         });
                                     });
                                 });
@@ -160,7 +180,10 @@ let findReports = function () {
                 }
             }
 
-            fs.appendFileSync("reports.csv", "\r\n" + content.join("\r\n"));
+            console.log("读取新的报告：" + content.length);
+            if(content.length > 0){
+                fs.appendFileSync("reports.csv", "\r\n" + content.join("\r\n"));
+            }
             if (pageLength >= 100) {
                 page++;
                 setTimeout(() => {
@@ -184,9 +207,10 @@ let startRun = function () {
         fetched = new Date().getTime();
         for (let key of itemKeys) {
             playerOrder++;
-            //序号,种族,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,战斗地址
+            //序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,战斗地址
             let fightUrl = `https://cn.classic.warcraftlogs.com/reports/${items[key]['code']}/#fight=${items[key]['id']}&type=summary&source=${items[key]['playerId']}`;
-            let output = `${playerOrder},${items[key]['race']},${startOrder + 1 + startOrderOffset},${items[key]['region']},${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill']},${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${fightUrl}`;
+            let output = `${playerOrder},${items[key]['faction']},${items[key]['guild'] > 0 ? '是' : '否'},${startOrder + 1 + startOrderOffset},${items[key]['region']},`
+             + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
             console.log(output);
             fs.appendFileSync("data.csv", output + "\r\n");
         }
@@ -204,6 +228,11 @@ let startRun = function () {
             if (page == 0) {//新的report结束了或者未开始
                 fetched = new Date().getTime();
                 let lines = fs.readFileSync('data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
+
+                if(lines.length == 0){
+                    fs.appendFileSync('data.csv', "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,最高护甲,物品等级,战斗地址\r\n");
+                }
+
                 let oldCodes = lines.map(c => c.split(",")[7]);
                 codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
                 if (codes.length > 0) {
@@ -225,10 +254,12 @@ let startRun = function () {
     }
 
     let cost = new Date().getTime() - fetched;
-    console.log("本轮耗时：" + cost/1000 + "秒")
-    if(cost > 10 * 60 * 1000){
-        console.log("获取超时，程序退出");
-        process.exit(1);
+    if(cost > 60 * 1000){
+        console.log("本轮耗时：" + cost/1000 + "秒")
+        if(cost > 10 * 60 * 1000){
+            console.log("获取超时，程序退出");
+            process.exit(1);
+        }    
     }
 
     setTimeout(() => {

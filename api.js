@@ -15,7 +15,9 @@ const rate = function(){
   queryCount++;
   while(queryCount > (new Date().getTime() - startQuery) / 1000 * 0.98){
   }
-  console.log(new Date().toLocaleString() + ":" + queryCount + "次，历时" + (new Date().getTime() - startQuery) / 1000 + "秒");
+  if(queryCount % 10 == 0){
+    console.log("[" + new Date().toLocaleString() + "]" + queryCount + "次，历时" + (new Date().getTime() - startQuery) / 1000 + "秒");
+  }
 };
 
 export const getReports = async (page) => {
@@ -59,6 +61,12 @@ export const getReport = async (code, encounterID) => {
       report(code: "${code}") {
         code
         title
+				guild {
+					faction {
+						id
+						name
+					}
+				}
 				startTime
 				endTime
 				region {
@@ -157,7 +165,7 @@ export const getBuffs = async (code, fightID, sourceID, startTime, endTime) => {
   return await client.request(query)
 }
 
-export const getAllBuffs = async (code, fightID, startTime, endTime) => {
+export const getAllBuffs = async (code, fightID, startTime, endTime, log = false) => {
   const url = 'https://www.warcraftlogs.com/api/v2/client';
   const query = gql`
   {
@@ -170,7 +178,7 @@ export const getAllBuffs = async (code, fightID, startTime, endTime) => {
     }
   }`;
 
-  if(test){
+  if(test || log){
     console.log(query);
   }
   const client = new GraphQLClient(url, {headers: {'Authorization': `Bearer ${token}`}})
@@ -251,7 +259,7 @@ export const getDeaths = async (code, fightID, startTime, endTime) => {
   return await client.request(query)
 }
 
-export const getReduce = async (code, fightID, sourceID, startTime, endTime) => {
+export const getReduce = async (code, fightID, sourceID, startTime, endTime, log = false) => {
   const url = 'https://www.warcraftlogs.com/api/v2/client';
   const query = gql`
 
@@ -266,7 +274,32 @@ export const getReduce = async (code, fightID, sourceID, startTime, endTime) => 
   }
   `;
 
-  if(test){
+  if(log || test){
+    console.log(query);
+  }
+  const client = new GraphQLClient(url, {headers: {'Authorization': `Bearer ${token}`}})
+  
+  rate();
+  return await client.request(query)
+}
+
+export const getReduceEvents = async (code, fightID, sourceID, startTime, endTime, log = false) => {
+  const url = 'https://www.warcraftlogs.com/api/v2/client';
+  const query = gql`
+  {
+    reportData {
+      report(code: "${code}") {
+        code
+        title
+        events(fightIDs: [${fightID}], startTime: ${startTime}, endTime: ${endTime}, dataType: DamageTaken, sourceID: ${sourceID}, includeResources: true, abilityID: 1){
+					data
+				}
+      }
+    }
+  }
+  `;
+
+  if(log || test){
     console.log(query);
   }
   const client = new GraphQLClient(url, {headers: {'Authorization': `Bearer ${token}`}})
