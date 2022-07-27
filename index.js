@@ -238,7 +238,7 @@ let startRun = function () {
                 if (codes.length > 0) {
                     if (lines.length > 1) {
                         let lastLine = lines[lines.length - 1].split(",");
-                        startOrderOffset = parseInt(lastLine[2]);
+                        startOrderOffset = parseInt(lastLine[3]);
                         playerOrder = parseInt(lastLine[0]);
                     }
 
