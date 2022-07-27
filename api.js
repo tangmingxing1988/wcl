@@ -13,8 +13,8 @@ const rate = function(){
   }
 
   queryCount++;
-  while(queryCount > (new Date().getTime() - startQuery) / 1000 * 0.98){
-  }
+//  while(queryCount > (new Date().getTime() - startQuery) / 1000 * 0.98){
+//  }
   if(queryCount % 10 == 0){
     console.log("[" + new Date().toLocaleString() + "]" + queryCount + "次，历时" + (new Date().getTime() - startQuery) / 1000 + "秒");
   }
