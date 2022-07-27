@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-let input = fs.readFileSync('data.csv', 'utf-8').split("\n").map(e => e.trim()).filter(c => c.length > 5 && !c.includes("是否击杀,服务器,角色名,压制次数,燃烧次数,"));
+let input = fs.readFileSync('data/data.csv', 'utf-8').split("\n").map(e => e.trim()).filter(c => c.length > 5 && !c.includes("是否击杀,服务器,角色名,压制次数,燃烧次数,"));
 //增加5列：血甲值，血甲相对值，闪避值，闪避相对值，死亡情况
 let addContent = []
 let result = ["序号,种族,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,战斗地址,倒坦"];
@@ -18,7 +18,7 @@ for (let i = 0; i < input.length; i++) {
     addContent[i] = { death: death, blood: parseInt(data[18]), doge: parseInt(data[20]) };
 }
 
-fs.writeFileSync("analyze.csv", result.join("\r\n") + "\r\n");
+fs.writeFileSync("data/analyze.csv", result.join("\r\n") + "\r\n");
 
 let percentage = 0.01;
 

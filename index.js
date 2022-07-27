@@ -163,7 +163,7 @@ let findReports = function () {
         "method": "GET"
     }).then(response => response.text())
         .then(function (body) {
-            let oldContent = fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16);
+            let oldContent = fs.readFileSync('data/reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16);
             let content = [];
             let pageLength = 0;
             let doc = parser.parseFromString(body, "text/html");
@@ -182,7 +182,7 @@ let findReports = function () {
 
             console.log("读取新的报告：" + content.length);
             if(content.length > 0){
-                fs.appendFileSync("reports.csv", "\r\n" + content.join("\r\n"));
+                fs.appendFileSync("data/reports.csv", "\r\n" + content.join("\r\n"));
             }
             if (pageLength >= 100) {
                 page++;
@@ -212,7 +212,7 @@ let startRun = function () {
             let output = `${playerOrder},${items[key]['faction']},${items[key]['guild'] > 0 ? '是' : '否'},${startOrder + 1 + startOrderOffset},${items[key]['region']},`
              + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
             console.log(output);
-            fs.appendFileSync("data.csv", output + "\r\n");
+            fs.appendFileSync("data/data.csv", output + "\r\n");
         }
 
         startOrder++;
@@ -227,14 +227,14 @@ let startRun = function () {
         } else { // code跑完了
             if (page == 0) {//新的report结束了或者未开始
                 fetched = new Date().getTime();
-                let lines = fs.readFileSync('data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
+                let lines = fs.readFileSync('data/data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
 
                 if(lines.length == 0){
-                    fs.appendFileSync('data.csv', "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,最高护甲,物品等级,战斗地址\r\n");
+                    fs.appendFileSync('data/data.csv', "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,最高护甲,物品等级,战斗地址\r\n");
                 }
 
                 let oldCodes = lines.map(c => c.split(",")[7]);
-                codes = Array.from(new Set(fs.readFileSync('reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
+                codes = Array.from(new Set(fs.readFileSync('data/reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
                 if (codes.length > 0) {
                     if (lines.length > 1) {
                         let lastLine = lines[lines.length - 1].split(",");
