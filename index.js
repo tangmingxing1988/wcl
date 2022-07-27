@@ -14,6 +14,7 @@ let phase = 0;
 let items = {};
 let itemKeys = [];
 let finishKeys = [];
+let parsedKeys = []; //已经解析过的战斗日志
 
 //拿到一个report就分析
 let analyze = function (code) {
@@ -36,9 +37,14 @@ let analyze = function (code) {
                 let druidTanks = [];
                 for (let player of players) {
                     if (player.icon == "Druid-Guardian" && player.total > 100000) {
-                        items[code + ":" + fight.id + ":" + player.id] = { code: code, region: region, guild: guild, startTime: startTime, endTime: endTime, id: fight.id, guid: player.guid, playerId: player.id, fightStartTime: fight.startTime, fightEndTime: fight.endTime, kill: fight.kill, serverName: serverName, playerName: player.name };
-                        druidTanks.push(player);
-                        itemKeys.push(code + ":" + fight.id + ":" + player.id)
+                        let globalKey = player.guid + ":" + (startTime + fight.startTime);
+                        if(!parsedKeys.includes(globalKey)){
+                            items[code + ":" + fight.id + ":" + player.id] = { code: code, region: region, guild: guild, startTime: startTime, endTime: endTime, id: fight.id, guid: player.guid, playerId: player.id, fightStartTime: fight.startTime, fightEndTime: fight.endTime, kill: fight.kill, serverName: serverName, playerName: player.name };
+                            druidTanks.push(player);
+                            itemKeys.push(code + ":" + fight.id + ":" + player.id)    
+                        }else{
+                            console.log(player.name + ":" + new Date(startTime + fight.startTime).toLocaleString() + "已解析过");
+                        }
                     }
                 }
                 phase = 2;
@@ -213,6 +219,7 @@ let startRun = function () {
              + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
             console.log(output);
             fs.appendFileSync("data/data.csv", output + "\r\n");
+            parsedKeys.push(items[key]['guid'] + ":" + (items[key]['startTime'] + items[key]['fightStartTime']));
         }
 
         startOrder++;
@@ -233,8 +240,13 @@ let startRun = function () {
                     fs.appendFileSync('data/data.csv', "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,最高护甲,物品等级,战斗地址\r\n");
                 }
 
-                let oldCodes = lines.map(c => c.split(",")[7]);
-                codes = Array.from(new Set(fs.readFileSync('data/reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16 && oldCodes.indexOf(d) == -1)));
+                let oldCodes = lines.map(c => c.split(",")[9]);
+                let oldParsedKeys = lines.map(l => l.split(',')).map(e => e[11] + ":" + (parseInt(e[5]) + parseInt(e[7])));
+                parsedKeys = Array.from(new Set(parsedKeys.concat(oldParsedKeys)));
+                console.log("已完成解析量" + parsedKeys.length);
+                codes = Array.from(new Set(fs.readFileSync('data/reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16)));
+                console.log("共有" + codes.length + "个报告");
+                codes = codes.filter(d => !oldCodes.includes(d));
                 if (codes.length > 0) {
                     if (lines.length > 1) {
                         let lastLine = lines[lines.length - 1].split(",");
