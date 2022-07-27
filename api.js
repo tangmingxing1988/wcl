@@ -5,13 +5,17 @@ let token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NmNmNzU3Ny02ODZhLT
 //96cf7577-686a-4f21-a175-395504693f1b and the client secret is . 
 //96cf7577-686a-4f21-a175-395504693f1b:u7APATsPo17NxqG574v0gKtMvaoXmrO51QiuCB2L
 //
-let startQuery = new Date().getTime();
+let startQuery = 0;
 let queryCount = 0;
 const rate = function(){
+  if(startQuery == 0){
+    startQuery = new Date().getTime();
+  }
+
   queryCount++;
   while(queryCount > (new Date().getTime() - startQuery) / 1000 * 0.98){
   }
-  console.log(queryCount + "次，历时" + (new Date().getTime() - startQuery) / 1000 + "秒");
+  console.log(new Date().toLocaleString() + ":" + queryCount + "次，历时" + (new Date().getTime() - startQuery) / 1000 + "秒");
 };
 
 export const getReports = async (page) => {
@@ -152,6 +156,29 @@ export const getBuffs = async (code, fightID, sourceID, startTime, endTime) => {
   rate();
   return await client.request(query)
 }
+
+export const getAllBuffs = async (code, fightID, startTime, endTime) => {
+  const url = 'https://www.warcraftlogs.com/api/v2/client';
+  const query = gql`
+  {
+    reportData {
+      report(code: "${code}") {
+        code
+        title
+        table(fightIDs: [${fightID}], startTime: ${startTime}, endTime: ${endTime}, dataType: Buffs, viewBy: Source, hostilityType: Friendlies)
+      }
+    }
+  }`;
+
+  if(test){
+    console.log(query);
+  }
+  const client = new GraphQLClient(url, {headers: {'Authorization': `Bearer ${token}`}})
+  
+  rate();
+  return await client.request(query)
+}
+
 
 export const getDebuffs = async (code, fightID, sourceID, startTime, endTime) => {
   const url = 'https://www.warcraftlogs.com/api/v2/client';
