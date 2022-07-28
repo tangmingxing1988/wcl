@@ -3,8 +3,8 @@ import fs from 'fs';
 import fetch from "node-fetch";
 import DOMParser from 'dom-parser';
 
-let testCode = "m3NKczB8T2CPkpV6";
-let testFights = [13];
+let testCode = "";
+let testFights = [];
 setLog(testCode);
 let parser = new DOMParser();
 let encounterID = 725;
@@ -44,7 +44,7 @@ let analyze = function (code) {
                 for (let player of players) {
                     if (player.icon == "Druid-Guardian") {
                         let globalKey = player.guid + ":" + (startTime + fight.startTime);
-                        if (!parsedKeys.includes(globalKey)) {
+                        if (!parsedKeys.includes(globalKey) || guild > 0) { //如果是公会日志，那么还是要解析，用于覆盖老日志
                             items[code + ":" + fight.id + ":" + player.id] = { code: code, region: region, guild: guild, startTime: startTime, endTime: endTime, id: fight.id, guid: player.guid, playerId: player.id, fightStartTime: fight.startTime, fightEndTime: fight.endTime, kill: fight.kill, serverName: serverName, playerName: player.name };
                             itemKeys.push(code + ":" + fight.id + ":" + player.id)
                             druidTanks.push(player);
@@ -248,7 +248,7 @@ let fetched = new Date().getTime();
 let poolSize = 20;
 let from = 0;
 let currentOldCodes = [];
-let dataStruct = "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,践踏次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,践踏平均护甲,全程平均护甲,物品等级,战斗地址";
+let dataStruct = "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,践踏次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,全程平均护甲,物品等级,战斗地址";
 let startRun = function () {
     findReports();
     for (let key of finishKeys.filter(v => !writedKeys.includes(v))) { //对于每一个已经完成的部分
@@ -261,7 +261,7 @@ let startRun = function () {
         let output = `${playerOrder},${items[key]['faction']},${items[key]['guild'] > 0 ? '是' : '否'},${codeOrder + startOrderOffset},${items[key]['region']},`
             + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},`
             + `${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stomp']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},`
-            + `${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['avgArmor']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
+            + `${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
         console.log(output);
         if(!testCode){
             fs.appendFileSync("data/data.csv", output + "\r\n");
