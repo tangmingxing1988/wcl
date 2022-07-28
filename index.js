@@ -108,6 +108,14 @@ let analyze = function (code) {
                                             items[key]["dodge"] = 0;
                                         }
 
+                                        let gear = attr.reportData.report.table.data.combatantInfo.gear;
+                                        items[key]["gear"] = '';
+                                        items[key]["gem"] = '';
+                                        if(gear && gear.length > 0){
+                                            items[key]["gear"] = gear.map(v => v.id).filter(v => v > 0).join('.');
+                                            items[key]["gem"] = gear.map(v => v.gems).filter(v => v && v.length > 0).map(v => v.map(g => g.id).filter(k => k > 0).join('.')).join('.');
+                                        }
+
                                         //获取死亡记录
                                         getDeaths(code, fight.id, fight.startTime, fight.endTime).then(function (deaths) {
                                             let dies = deaths.reportData.report.table.data.entries;
@@ -135,9 +143,9 @@ let analyze = function (code) {
                                                     items[key]["avgArmor"] = Math.round(armorWhenStomp.length > 0 ? armorWhenStomp.reduce((a, b) => a + b) / armorWhenStomp.length : 0);
                                                 }
 
-                                                //非圣疗期间的平均护甲值
+                                                //非践踏期间非圣疗期间的平均护甲值
                                                 items[key]["maxArmor"] = 0;
-                                                let armorOverall = reduceEvents
+                                                let armorOverall = reduceEvents.filter(c => bands.filter(band => c.timestamp >= band.startTime && c.timestamp <= band.endTime).length <= 0)
                                                 .filter(c => c.abilityGameID == 1) //只记录平砍
                                                 .filter(c => (c.buffs || '').split('.').filter(buff => buff.length > 0 && layOnHands.includes(parseInt(buff))).length <= 0).map(c => c.armor).filter(a => a);
                                                 if(armorOverall.length > 0){
@@ -248,7 +256,7 @@ let fetched = new Date().getTime();
 let poolSize = 20;
 let from = 0;
 let currentOldCodes = [];
-let dataStruct = "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,践踏次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,全程平均护甲,物品等级,战斗地址";
+let dataStruct = "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,践踏次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,践踏平均护甲,非践踏平均护甲,装备等级,装备,宝石,战斗地址";
 let startRun = function () {
     findReports();
     for (let key of finishKeys.filter(v => !writedKeys.includes(v))) { //对于每一个已经完成的部分
@@ -261,7 +269,7 @@ let startRun = function () {
         let output = `${playerOrder},${items[key]['faction']},${items[key]['guild'] > 0 ? '是' : '否'},${codeOrder + startOrderOffset},${items[key]['region']},`
             + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},`
             + `${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stomp']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},`
-            + `${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
+            + `${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['avgArmor']},${items[key]['maxArmor']},${items[key]['item']},${items[key]['gear']},${items[key]['gem']},${fightUrl}`;
         console.log(output);
         if(!testCode){
             fs.appendFileSync("data/data.csv", output + "\r\n");
