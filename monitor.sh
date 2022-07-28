@@ -6,7 +6,7 @@ do
                 echo "process already started!"
                 sleep 1
         else
-                node /root/wcl/index.js > /root/wcl/log.txt 2>&1 &
+                node --unhandled-rejections=strict /root/wcl/index.js > /root/wcl/log.txt 2>&1 &
                 echo "process has been restarted!"
                 sleep 2
         fi

@@ -50,106 +50,110 @@ let analyze = function (code) {
                     }
                 }
 
-                getAllBuffs(code, fight.id, fight.startTime, fight.endTime).then(function (allBuffs) {
-                    let faction = "";
-                    if (guild == 1) {
-                        faction = "联盟";
-                    } else if (guild == 2) {
-                        faction = "部落";
-                    }
-                    if (guild <= 0) {
-                        let theBuffs = allBuffs.reportData.report.table.data.auras.map(aura => aura.guid);
-                        if (allianceBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
-                            faction += "联盟";
+                if (druidTanks.length > 0) {
+                    getAllBuffs(code, fight.id, fight.startTime, fight.endTime).then(function (allBuffs) {
+                        let faction = "";
+                        if (guild == 1) {
+                            faction = "联盟";
+                        } else if (guild == 2) {
+                            faction = "部落";
                         }
-                        if (hordeBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
-                            faction += "部落";
+                        if (guild <= 0) {
+                            let theBuffs = allBuffs.reportData.report.table.data.auras.map(aura => aura.guid);
+                            if (allianceBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
+                                faction += "联盟";
+                            }
+                            if (hordeBuffs.filter(b => theBuffs.indexOf(b) >= 0).length > 0) {
+                                faction += "部落";
+                            }
+
+                            if (faction.length <= 0) {
+                                faction = "未知";
+                            }
                         }
 
-                        if (faction.length <= 0) {
-                            faction = "未知";
-                        }
-                    }
-
-                    for (let player of druidTanks) {
-                        //判定是否有压制
-                        getBuffs(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (buffs) {
-                            let key = code + ":" + fight.id + ":" + player.id;
-                            let auras = buffs.reportData.report.table.data.auras;
-                            items[key]["faction"] = faction;
-                            items[key]["pain"] = auras.filter(aura => aura.guid == PainSuppression).map(aura => aura.totalUses).reduce(function (prev, curr, idx, arr) {
-                                return prev + curr;
-                            }, 0);
-
-                            getDebuffs(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (debuffs) {
-                                let auras = debuffs.reportData.report.table.data.auras;
-                                items[key]["burn"] = auras.filter(aura => aura.guid == burn).map(aura => aura.totalUses).reduce(function (prev, curr, idx, arr) {
+                        for (let player of druidTanks) {
+                            //判定是否有压制
+                            getBuffs(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (buffs) {
+                                let key = code + ":" + fight.id + ":" + player.id;
+                                let auras = buffs.reportData.report.table.data.auras;
+                                items[key]["faction"] = faction;
+                                items[key]["pain"] = auras.filter(aura => aura.guid == PainSuppression).map(aura => aura.totalUses).reduce(function (prev, curr, idx, arr) {
                                     return prev + curr;
                                 }, 0);
-                                let bands = auras.filter(aura => aura.guid == stomp).map(aura => aura.bands)[0] || [];
 
-                                getAttribute(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (attr) {
-                                    let stats = attr.reportData.report.table.data.combatantInfo.stats;
-                                    if (stats.Stamina) {
-                                        items[key]["stam"] = stats.Stamina.max;
-                                        items[key]["armor"] = stats.Armor.max;
-                                        items[key]["agili"] = stats.Agility.max;
-                                        items[key]["dodge"] = stats.Dodge.max;
-                                    } else {
-                                        items[key]["stam"] = 0;
-                                        items[key]["armor"] = 0;
-                                        items[key]["agili"] = 0;
-                                        items[key]["dodge"] = 0;
-                                    }
+                                getDebuffs(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (debuffs) {
+                                    let auras = debuffs.reportData.report.table.data.auras;
+                                    items[key]["burn"] = auras.filter(aura => aura.guid == burn).map(aura => aura.totalUses).reduce(function (prev, curr, idx, arr) {
+                                        return prev + curr;
+                                    }, 0);
+                                    let bands = auras.filter(aura => aura.guid == stomp).map(aura => aura.bands)[0] || [];
 
-                                    //获取死亡记录
-                                    getDeaths(code, fight.id, fight.startTime, fight.endTime).then(function (deaths) {
-                                        let dies = deaths.reportData.report.table.data.entries;
-                                        let pos = dies.map(entry => entry.id).indexOf(player.id);
-                                        if (pos >= 0) {
-                                            items[key]["death"] = pos + 1;
-                                            items[key]['deathTime'] = dies[pos]['timestamp'] - fight.startTime;
+                                    getAttribute(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (attr) {
+                                        let stats = attr.reportData.report.table.data.combatantInfo.stats;
+                                        if (stats.Stamina) {
+                                            items[key]["stam"] = stats.Stamina.max;
+                                            items[key]["armor"] = stats.Armor.max;
+                                            items[key]["agili"] = stats.Agility.max;
+                                            items[key]["dodge"] = stats.Dodge.max;
                                         } else {
-                                            items[key]["death"] = 0;
-                                            items[key]['deathTime'] = 0;
+                                            items[key]["stam"] = 0;
+                                            items[key]["armor"] = 0;
+                                            items[key]["agili"] = 0;
+                                            items[key]["dodge"] = 0;
                                         }
 
-                                        //获取免伤详情
-                                        getReduceEvents(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (redEvents) {
-                                            let reduceEvents = redEvents.reportData.report.events.data;
-                                            items[key]["item"] = reduceEvents.map(c => c.itemLevel).filter(c => c).length > 0 ? Math.max(...reduceEvents.map(c => c.itemLevel).filter(c => c)) : 0;
-
-                                            //践踏期间非圣疗术的平均护甲值
-                                            items[key]["avgArmor"] =  0;
-                                            if(bands.length > 0){
-                                                let armorWhenStomp = reduceEvents.filter(c => bands.filter(band => c.timestamp >= band.startTime && c.timestamp <= band.endTime).length > 0)
-                                                .filter(c => c.buffs.split('.').filter(buff => layOnHands.includes(buff)).length <= 0)
-                                                .map(c => c.armor).filter(a => a);
-                                                items[key]["avgArmor"] = Math.round(armorWhenStomp.length > 0 ? armorWhenStomp.reduce((a, b) => a + b) / armorWhenStomp.length : 0);
+                                        //获取死亡记录
+                                        getDeaths(code, fight.id, fight.startTime, fight.endTime).then(function (deaths) {
+                                            let dies = deaths.reportData.report.table.data.entries;
+                                            let pos = dies.map(entry => entry.id).indexOf(player.id);
+                                            if (pos >= 0) {
+                                                items[key]["death"] = pos + 1;
+                                                items[key]['deathTime'] = dies[pos]['timestamp'] - fight.startTime;
+                                            } else {
+                                                items[key]["death"] = 0;
+                                                items[key]['deathTime'] = 0;
                                             }
 
-                                            //非圣疗期间的最大护甲值
-                                            items[key]["maxArmor"] = Math.max(...reduceEvents.filter(c => c.buffs.split('.').filter(buff => layOnHands.includes(buff)).length <= 0).map(c => c.armor).filter(a => a));
+                                            //获取免伤详情
+                                            getReduceEvents(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (redEvents) {
+                                                let reduceEvents = redEvents.reportData.report.events.data;
+                                                items[key]["item"] = reduceEvents.map(c => c.itemLevel).filter(c => c).length > 0 ? Math.max(...reduceEvents.map(c => c.itemLevel).filter(c => c)) : 0;
 
-                                            //获取免伤记录
-                                            getReduce(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (red) {
-                                                let redu = red.reportData.report.table.data.entries;
-                                                if (redu.length > 0) {
-                                                    items[key]["total"] = redu[0].total;
-                                                    items[key]["totalReduced"] = redu[0].totalReduced;
-                                                    items[key]["uses"] = redu[0].uses;
-                                                    items[key]["missCount"] = redu[0].missCount;
-                                                    finishKeys.push(key);
+                                                //践踏期间非圣疗术的平均护甲值
+                                                items[key]["avgArmor"] = 0;
+                                                if (bands.length > 0) {
+                                                    let armorWhenStomp = reduceEvents.filter(c => bands.filter(band => c.timestamp >= band.startTime && c.timestamp <= band.endTime).length > 0)
+                                                        .filter(c => (c.buffs || '').split('.').filter(buff => layOnHands.includes(buff)).length <= 0)
+                                                        .map(c => c.armor).filter(a => a);
+                                                    items[key]["avgArmor"] = Math.round(armorWhenStomp.length > 0 ? armorWhenStomp.reduce((a, b) => a + b) / armorWhenStomp.length : 0);
                                                 }
-                                            });
 
+                                                //非圣疗期间的最大护甲值
+                                                items[key]["maxArmor"] = Math.max(...reduceEvents.filter(c => (c.buffs || '').split('.').filter(buff => layOnHands.includes(buff)).length <= 0).map(c => c.armor).filter(a => a));
+
+                                                //获取免伤记录
+                                                getReduce(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (red) {
+                                                    let redu = red.reportData.report.table.data.entries;
+                                                    if (redu.length > 0) {
+                                                        items[key]["total"] = redu[0].total;
+                                                        items[key]["totalReduced"] = redu[0].totalReduced;
+                                                        items[key]["uses"] = redu[0].uses;
+                                                        items[key]["missCount"] = redu[0].missCount;
+                                                        finishKeys.push(key);
+                                                    }
+                                                });
+
+                                            });
                                         });
                                     });
                                 });
                             });
-                        });
-                    }
-                });
+                        }
+                    });
+                }else{
+                    failedCodes.push(code);
+                }
             });
         }
     }, function (reason) {
@@ -158,12 +162,19 @@ let analyze = function (code) {
     })
 };
 
-let page = 0;
+let lastView = 0;
+let page = 1;
+let seeingPage = 0;
 let findReports = function () {
-    if(page <= 0){
+    if (new Date().getTime() - lastView < 10 * 60 * 1000) { // 每十分钟看一轮
         return;
     }
+    if (seeingPage >= page) { //正在看的页
+        return;
+    }
+
     console.log("查找页：" + page);
+    seeingPage = page;
     fetch("https://cn.classic.warcraftlogs.com/zone/reports?zone=1013&boss=725&difficulty=0&class=Druid&spec=Guardian&kills=0&duration=0&server=0&page=" + page, {
         "headers": {
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -184,6 +195,7 @@ let findReports = function () {
         "method": "GET"
     }).then(response => response.text())
         .then(function (body) {
+            fetched = new Date().getTime();
             let oldContent = fs.readFileSync('data/reports.csv', 'utf-8').split("\n").map(c => c.trim()).filter(d => d.length == 16);
             let content = [];
             let pageLength = 0;
@@ -203,15 +215,13 @@ let findReports = function () {
 
             console.log("读取新的报告：" + content.length);
             if (content.length > 0) {
-                fs.appendFileSync("data/reports.csv", "\r\n" + content.join("\r\n"));
+                fs.appendFileSync("data/reports.csv", content.join("\r\n") + "\r\n");
             }
             if (pageLength >= 100) {
                 page++;
-                setTimeout(() => {
-                    findReports();
-                }, 1000);
             } else {
-                page = 0;
+                lastView = new Date().getTime();
+                page = 1;
             }
         });
 }
@@ -223,11 +233,11 @@ let codes = [];
 let delay = 500;
 let writedKeys = []; //已经被写入的key
 let fetched = new Date().getTime();
-let poolSize = 10;
+let poolSize = 20;
 let from = 0;
-let expected = 0;
 let dataStruct = "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,践踏护甲,最高护甲,物品等级,战斗地址";
 let startRun = function () {
+    findReports();
     for (let key of finishKeys.filter(v => !writedKeys.includes(v))) { //对于每一个已经完成的部分
         fetched = new Date().getTime();
         playerOrder++;
@@ -251,23 +261,22 @@ let startRun = function () {
     let parsingCodesSize = new Set(usedCodes).size;
     console.log(`发送出去的code有${sentCodes.length}，正在解析中的有${parsingCodesSize}`);
 
-    if (poolSize > parsingCodesSize && (expected == 0 || sentCodes.length < expected)){
+    if (poolSize > parsingCodesSize) {
         let code = codes[startOrder];
         if (code) {
-            if(startOrder == 0){
+            if (startOrder == 0) {
                 from = new Date().getTime();
-            }else{
+            } else {
                 let totalCost = new Date().getTime() - from;
-                let guessedCost = totalCost / (sentCodes.length - parsingCodesSize) * (codes.length - sentCodes.length + parsingCodesSize);
-                if(Number.isFinite(guessedCost)){
-                    console.log(`目前耗时${totalCost/1000}秒，预计剩余耗时${guessedCost/1000}`)
+                let guessedCost = totalCost / sentCodes.length * codes.length;
+                if (Number.isFinite(guessedCost)) {
+                    console.log(`目前耗时${totalCost / 1000}秒，预计剩余耗时${guessedCost / 1000}`)
                 }
             }
             analyze(code);
             startOrder++;
-        } else {
-            if (page == 0) {//新的report结束了或者未开始
-                fetched = new Date().getTime();
+        } else { // 跑完了本轮
+            if (parsingCodesSize <= 0) { //如果完成了收尾工作
                 let lines = fs.readFileSync('data/data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
 
                 if (lines.length == 0) {
@@ -291,13 +300,10 @@ let startRun = function () {
                     console.log("共" + codes.length + "个code，起始点" + startOrder + "，起始点偏移" + startOrderOffset + "，玩家点" + playerOrder);
                     startOrder = 0;
                 } else {
-                    delay = 60 * 1000;
-                    page = 1;
-                    findReports();
+                    lastView = 0; //重新去查看最新的code
                 }
             }
         }
-
     }
 
     let cost = new Date().getTime() - fetched;
@@ -311,11 +317,7 @@ let startRun = function () {
 
     setTimeout(() => {
         startRun();
-    }, delay);    
+    }, delay);
 }
 
-// page = 1;
-setTimeout(() => {
-    startRun();    
-}, page > 0 ? 15 * 1000 : 0);
-findReports();//查看最新的codes
+startRun(); 

@@ -291,7 +291,7 @@ export const getReduceEvents = async (code, fightID, sourceID, startTime, endTim
       report(code: "${code}") {
         code
         title
-        events(fightIDs: [${fightID}], startTime: ${startTime}, endTime: ${endTime}, dataType: DamageTaken, sourceID: ${sourceID}, includeResources: true, abilityID: 1){
+        events(fightIDs: [${fightID}], startTime: ${startTime}, endTime: ${endTime}, dataType: DamageTaken, sourceID: ${sourceID}, includeResources: true){
 					data
 				}
       }
