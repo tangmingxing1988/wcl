@@ -7,8 +7,10 @@ let parser = new DOMParser();
 let encounterID = 725;
 let PainSuppression = 33206;
 let burn = 46394;
+let stomp = 45185;
 let allianceBuffs = [28880, 20594, 20589];
 let hordeBuffs = [7744, 26297, 20577, 20572, 33697, 33702];
+let layOnHands = [633, 2800, 10310, 27154];
 
 //代表解析结果
 let items = {};
@@ -84,6 +86,7 @@ let analyze = function (code) {
                                 items[key]["burn"] = auras.filter(aura => aura.guid == burn).map(aura => aura.totalUses).reduce(function (prev, curr, idx, arr) {
                                     return prev + curr;
                                 }, 0);
+                                let bands = auras.filter(aura => aura.guid == stomp).map(aura => aura.bands)[0] || [];
 
                                 getAttribute(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (attr) {
                                     let stats = attr.reportData.report.table.data.combatantInfo.stats;
@@ -114,8 +117,19 @@ let analyze = function (code) {
                                         //获取免伤详情
                                         getReduceEvents(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (redEvents) {
                                             let reduceEvents = redEvents.reportData.report.events.data;
-                                            items[key]["maxArmor"] = reduceEvents.map(c => c.armor).filter(c => c).length > 0 ? Math.max(...reduceEvents.map(c => c.armor).filter(c => c)) : 0;
                                             items[key]["item"] = reduceEvents.map(c => c.itemLevel).filter(c => c).length > 0 ? Math.max(...reduceEvents.map(c => c.itemLevel).filter(c => c)) : 0;
+
+                                            //践踏期间非圣疗术的平均护甲值
+                                            items[key]["avgArmor"] =  0;
+                                            if(bands.length > 0){
+                                                let armorWhenStomp = reduceEvents.filter(c => bands.filter(band => c.timestamp >= band.startTime && c.timestamp <= band.endTime).length > 0)
+                                                .filter(c => c.buffs.split('.').filter(buff => layOnHands.includes(buff)).length <= 0)
+                                                .map(c => c.armor).filter(a => a);
+                                                items[key]["avgArmor"] = Math.round(armorWhenStomp.length > 0 ? armorWhenStomp.reduce((a, b) => a + b) / armorWhenStomp.length : 0);
+                                            }
+
+                                            //非圣疗期间的最大护甲值
+                                            items[key]["maxArmor"] = Math.max(...reduceEvents.filter(c => c.buffs.split('.').filter(buff => layOnHands.includes(buff)).length <= 0).map(c => c.armor).filter(a => a));
 
                                             //获取免伤记录
                                             getReduce(code, fight.id, player.id, fight.startTime, fight.endTime).then(function (red) {
@@ -146,6 +160,9 @@ let analyze = function (code) {
 
 let page = 0;
 let findReports = function () {
+    if(page <= 0){
+        return;
+    }
     console.log("查找页：" + page);
     fetch("https://cn.classic.warcraftlogs.com/zone/reports?zone=1013&boss=725&difficulty=0&class=Druid&spec=Guardian&kills=0&duration=0&server=0&page=" + page, {
         "headers": {
@@ -208,15 +225,18 @@ let writedKeys = []; //已经被写入的key
 let fetched = new Date().getTime();
 let poolSize = 10;
 let from = 0;
+let expected = 0;
+let dataStruct = "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,践踏护甲,最高护甲,物品等级,战斗地址";
 let startRun = function () {
     for (let key of finishKeys.filter(v => !writedKeys.includes(v))) { //对于每一个已经完成的部分
         fetched = new Date().getTime();
         playerOrder++;
         let codeOrder = codes.indexOf(items[key]['code']) + 1;
-        //序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,战斗地址
         let fightUrl = `https://cn.classic.warcraftlogs.com/reports/${items[key]['code']}/#fight=${items[key]['id']}&type=summary&source=${items[key]['playerId']}`;
         let output = `${playerOrder},${items[key]['faction']},${items[key]['guild'] > 0 ? '是' : '否'},${codeOrder + startOrderOffset},${items[key]['region']},`
-            + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
+            + `${items[key]['startTime']},${items[key]['endTime']},${items[key]['fightStartTime']},${items[key]['fightEndTime']},${items[key]['code']},${items[key]['id']},${items[key]['guid']},${items[key]['playerId']},${items[key]['kill'] ? '是' : '否'},`
+            + `${items[key]['serverName']},${items[key]['playerName']},${items[key]['pain']},${items[key]['burn']},${items[key]['stam']},${items[key]['armor']},${items[key]['agili']},${items[key]['dodge']},${items[key]['death']},${items[key]['deathTime']},`
+            + `${items[key]['total']},${items[key]['totalReduced']},${items[key]['uses']},${items[key]['missCount']},${items[key]['avgArmor']},${items[key]['maxArmor']},${items[key]['item']},${fightUrl}`;
         console.log(output);
         fs.appendFileSync("data/data.csv", output + "\r\n");
         parsedKeys.push(items[key]['guid'] + ":" + (items[key]['startTime'] + items[key]['fightStartTime']));
@@ -231,7 +251,7 @@ let startRun = function () {
     let parsingCodesSize = new Set(usedCodes).size;
     console.log(`发送出去的code有${sentCodes.length}，正在解析中的有${parsingCodesSize}`);
 
-    if (poolSize > parsingCodesSize) {
+    if (poolSize > parsingCodesSize && (expected == 0 || sentCodes.length < expected)){
         let code = codes[startOrder];
         if (code) {
             if(startOrder == 0){
@@ -239,7 +259,9 @@ let startRun = function () {
             }else{
                 let totalCost = new Date().getTime() - from;
                 let guessedCost = totalCost / (sentCodes.length - parsingCodesSize) * (codes.length - sentCodes.length + parsingCodesSize);
-                console.log(`目前耗时${totalCost/1000}秒，预计剩余耗时${guessedCost/1000}`)
+                if(Number.isFinite(guessedCost)){
+                    console.log(`目前耗时${totalCost/1000}秒，预计剩余耗时${guessedCost/1000}`)
+                }
             }
             analyze(code);
             startOrder++;
@@ -249,7 +271,7 @@ let startRun = function () {
                 let lines = fs.readFileSync('data/data.csv', 'utf-8').split("\n").filter(c => c.length > 5);
 
                 if (lines.length == 0) {
-                    fs.appendFileSync('data/data.csv', "序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,是否击杀,服务器,角色名,压制次数,燃烧次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,最高护甲,物品等级,战斗地址\r\n");
+                    fs.appendFileSync('data/data.csv', dataStruct + "\r\n");
                 }
 
                 let oldCodes = lines.map(c => c.split(",")[9]);
@@ -289,11 +311,11 @@ let startRun = function () {
 
     setTimeout(() => {
         startRun();
-    }, delay);
+    }, delay);    
 }
 
-page = 1;
-findReports();//查看最新的codes
+// page = 1;
 setTimeout(() => {
     startRun();    
-}, 15 * 1000);
+}, page > 0 ? 15 * 1000 : 0);
+findReports();//查看最新的codes

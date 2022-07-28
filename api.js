@@ -188,7 +188,7 @@ export const getAllBuffs = async (code, fightID, startTime, endTime, log = false
 }
 
 
-export const getDebuffs = async (code, fightID, sourceID, startTime, endTime) => {
+export const getDebuffs = async (code, fightID, sourceID, startTime, endTime, log = false) => {
   const url = 'https://www.warcraftlogs.com/api/v2/client';
   const query = gql`
   {
@@ -201,7 +201,7 @@ export const getDebuffs = async (code, fightID, sourceID, startTime, endTime) =>
     }
   }`;
 
-  if(test){
+  if(log || test){
     console.log(query);
   }
   const client = new GraphQLClient(url, {headers: {'Authorization': `Bearer ${token}`}})
