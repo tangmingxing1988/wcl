@@ -20,6 +20,10 @@ const rate = function(){
   }
 };
 
+export const setLog = function(log){
+  test = log;
+}
+
 export const getReports = async (page) => {
   const url = 'https://www.warcraftlogs.com/api/v2/client';
 
@@ -291,7 +295,7 @@ export const getReduceEvents = async (code, fightID, sourceID, startTime, endTim
       report(code: "${code}") {
         code
         title
-        events(fightIDs: [${fightID}], startTime: ${startTime}, endTime: ${endTime}, dataType: DamageTaken, sourceID: ${sourceID}, includeResources: true){
+        events(fightIDs: [${fightID}], startTime: ${startTime}, endTime: ${endTime}, dataType: DamageTaken, sourceID: ${sourceID}, includeResources: true, abilityID: 1){
 					data
 				}
       }
