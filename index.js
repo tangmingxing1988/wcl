@@ -243,6 +243,8 @@ let findReports = function () {
                 lastView = new Date().getTime();
                 page = 1;
             }
+            
+            seeingPage = 0;
         });
 }
 
