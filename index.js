@@ -173,6 +173,8 @@ let analyze = function (code) {
                     });
                 }else{
                     failedCodes.push(code);
+                    console.log("失败：全部解析过");
+                    fs.appendFileSync("data/per.csv", code + "\r\n");
                 }
             });
         }
