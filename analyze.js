@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-let input = fs.readFileSync('data/data_old.csv', 'utf-8').split("\n").map(e => e.trim()).filter(c => c.length > 5 && !c.includes("服务器,角色名")).sort((a, b) => a.split(',')[2] == '是' ? -1 : 1);
+let input = fs.readFileSync('data/data.csv', 'utf-8').split("\n").map(e => e.trim()).filter(c => c.length > 5 && !c.includes("服务器,角色名")).sort((a, b) => a.split(',')[2] == '是' ? -1 : 1);
 let keys = [];
 let validInput = [];
 for (let otherLine of input) {

@@ -1,4 +1,4 @@
-import { getDebuffs, getReduceEvents } from './api.js';
+import { getDebuffs, getReduceEvents, setLog } from './api.js';
 import fs from 'fs';
 
 let layOnHands = [633, 2800, 10310, 27154, 20233, 20236, 9257];
@@ -32,9 +32,11 @@ const fixIt = function(line){
 		let auras = debuffs.reportData.report.table.data.auras;
 		let bands = auras.filter(aura => aura.guid == stomp).map(aura => aura.bands)[0] || [];
 
+		console.log("yes");
 		//获取免伤详情
 		getReduceEvents(code, fightID, playerID, startTime, endTime).then(function (redEvents) {
 			let reduceEvents = redEvents.reportData.report.events.data;
+			console.log("yes");
 			//践踏期间非圣疗术的平均护甲值
 			let stompArmor = 0;
 			if (bands.length > 0) {
@@ -45,6 +47,7 @@ const fixIt = function(line){
 				stompArmor = Math.round(armorWhenStomp.length > 0 ? armorWhenStomp.reduce((a, b) => a + b) / armorWhenStomp.length : 0);
 			}
 
+			console.log("yes");
 			//非践踏期间非圣疗期间的平均护甲值
 			let normalArmor = 0;
 			let armorOverall = reduceEvents.filter(c => bands.filter(band => c.timestamp > band.startTime && c.timestamp < band.endTime).length <= 0)
@@ -54,6 +57,7 @@ const fixIt = function(line){
 				normalArmor = Math.round(armorOverall.length > 0 ? armorOverall.reduce((a, b) => a + b) / armorOverall.length : 0);
 			}
 
+			console.log("yes");
 			data[29] = stompArmor;
 			data[30] = normalArmor;
 			result.push(data.join(','));
@@ -63,7 +67,7 @@ const fixIt = function(line){
 }
 
 let i = 0;
-let poolSize = 15;
+let poolSize = 3;
 while(i < lines.length){
 	let line = lines[i];
 	if(i - result.length < poolSize){
