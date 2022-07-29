@@ -5,6 +5,7 @@ import DOMParser from 'dom-parser';
 
 let testCode = "";
 let testFights = [];
+let testPlayer = [];
 setLog(testCode);
 let parser = new DOMParser();
 let encounterID = 725;
@@ -42,7 +43,7 @@ let analyze = function (code) {
                 let players = tanks.reportData.report.table.data.entries;
                 let druidTanks = [];
                 for (let player of players) {
-                    if (player.icon == "Druid-Guardian") {
+                    if (player.icon == "Druid-Guardian" && (testPlayer.length <= 0 || testPlayer.includes(player.id))) {
                         let globalKey = player.guid + ":" + (startTime + fight.startTime);
                         if (!parsedKeys.includes(globalKey) || guild > 0) { //如果是公会日志，那么还是要解析，用于覆盖老日志
                             items[code + ":" + fight.id + ":" + player.id] = { code: code, region: region, guild: guild, startTime: startTime, endTime: endTime, id: fight.id, guid: player.guid, playerId: player.id, fightStartTime: fight.startTime, fightEndTime: fight.endTime, kill: fight.kill, serverName: serverName, playerName: player.name };
@@ -136,7 +137,7 @@ let analyze = function (code) {
                                                 //践踏期间非圣疗术的平均护甲值
                                                 items[key]["avgArmor"] = 0;
                                                 if (bands.length > 0) {
-                                                    let armorWhenStomp = reduceEvents.filter(c => bands.filter(band => c.timestamp >= band.startTime && c.timestamp <= band.endTime).length > 0)
+                                                    let armorWhenStomp = reduceEvents.filter(c => bands.filter(band => c.timestamp > band.startTime && c.timestamp < band.endTime).length > 0)
                                                         .filter(c => c.abilityGameID == 1) //只记录平砍
                                                         .filter(c => (c.buffs || '').split('.').filter(buff => buff.length > 0 && layOnHands.includes(parseInt(buff))).length <= 0)
                                                         .map(c => c.armor).filter(a => a);
@@ -145,7 +146,7 @@ let analyze = function (code) {
 
                                                 //非践踏期间非圣疗期间的平均护甲值
                                                 items[key]["maxArmor"] = 0;
-                                                let armorOverall = reduceEvents.filter(c => bands.filter(band => c.timestamp >= band.startTime && c.timestamp <= band.endTime).length <= 0)
+                                                let armorOverall = reduceEvents.filter(c => bands.filter(band => c.timestamp > band.startTime && c.timestamp < band.endTime).length <= 0)
                                                 .filter(c => c.abilityGameID == 1) //只记录平砍
                                                 .filter(c => (c.buffs || '').split('.').filter(buff => buff.length > 0 && layOnHands.includes(parseInt(buff))).length <= 0).map(c => c.armor).filter(a => a);
                                                 if(armorOverall.length > 0){
@@ -182,7 +183,7 @@ let analyze = function (code) {
         failedCodes.push(code);
         console.log("失败：" + reason);
 
-        if(reason.message.indexOf("You do not have permission") >= 0){
+        if(reason.message.indexOf("You do not have permission") >= 0 || reason.message.indexOf("This report does not exist.") >= 0){
             fs.appendFileSync("data/per.csv", code + "\r\n");
         }
     })
@@ -192,12 +193,13 @@ let lastView = 0;
 let page = 1;
 let seeingPage = 0;
 let findReports = function () {
-    if (new Date().getTime() - lastView < 10 * 60 * 1000) { // 每十分钟看一轮
-        console.log(new Date() + "还没到查看时间");
+    let restMinutes = (10 * 60 * 1000 - (new Date().getTime() - lastView)) / (60 * 1000);
+    if (restMinutes > 0) { // 每十分钟看一轮
+        console.log(new Date() + "还没到查看时间，剩余" + restMinutes + "分钟");
         return;
     }
     if (seeingPage >= page || testCode) { //正在看的页
-        console.log(new Date() + "正在查看");
+        console.log(new Date() + "正在查看" + seeingPage);
         return;
     }
 
@@ -303,9 +305,9 @@ let startRun = function () {
                 from = new Date().getTime();
             } else {
                 let totalCost = new Date().getTime() - from;
-                let guessedCost = totalCost / sentCodes.length * codes.length;
+                let guessedCost = totalCost / sentCodes.length * (codes.length - sentCodes.length);
                 if (Number.isFinite(guessedCost)) {
-                    console.log(`目前耗时${totalCost / 1000}秒，预计剩余耗时${guessedCost / 1000}`)
+                    console.log(`还有${codes.length - sentCodes.length}个报告，目前耗时${totalCost / 1000}秒，预计剩余耗时${guessedCost / 1000}`)
                 }
             }
             analyze(code);
@@ -328,6 +330,8 @@ let startRun = function () {
                     let oldCodes = lines.map(c => c.split(",")[9]);
                     let oldParsedKeys = lines.map(l => l.split(',')).map(e => e[11] + ":" + (parseInt(e[5]) + parseInt(e[7])));
                     let perKeys = fs.readFileSync('data/per.csv', 'utf-8').split("\n").map(v => v.trim()).filter(v => v);
+                    console.log(Array.from(new Set(perKeys)).length + "个重复报告");
+                    console.log(Array.from(new Set(oldCodes.concat(perKeys))).length + "个跳过报告");
                     parsedKeys = Array.from(new Set(parsedKeys.concat(oldParsedKeys)));
                     console.log("已完成解析量" + parsedKeys.length);
                     codes = Array.from(new Set((fs.readFileSync('data/reports.csv', 'utf-8')).split("\n").map(c => c.trim()).filter(d => d.length == 16)));
