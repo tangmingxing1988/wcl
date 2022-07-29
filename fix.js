@@ -3,8 +3,8 @@ import fs from 'fs';
 
 let layOnHands = [633, 2800, 10310, 27154, 20233, 20236, 9257];
 let stomp = 45185;
-let fixLineTop = 30000;
-let fixLineBottom = 25000;
+let fixLineTop = 24000;
+let fixLineBottom = 22000;
 let lines = fs.readFileSync('data/data.csv', 'utf-8').split("\n").filter(c => c.length > 5).map(v => v.trim());
 //序号,阵营,公会报告,报告序号,地区,开始时间,结束时间,战斗开始时间,战斗结束时间,报告编码,战斗编号,玩家全局编号,玩家编号,
 //是否击杀,服务器,角色名,压制次数,燃烧次数,践踏次数,耐力,护甲,敏捷,躲闪等级,死亡序号,死亡时间,原始承伤,实际承伤,原始平砍次数,未中平砍次数,践踏平均护甲,非践踏平均护甲,装备等级,装备,宝石,战斗地址
@@ -60,7 +60,11 @@ const fixIt = function(line){
 			data[30] = normalArmor;
 			result.push(data.join(','));
 			console.log("推出  ======>  " + data.join(','))
+		}, function(error){
+			result.push(line);
 		});
+	}, function(error){
+		result.push(line);
 	});
 }
 
