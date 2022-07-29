@@ -193,13 +193,15 @@ let page = 1;
 let seeingPage = 0;
 let findReports = function () {
     if (new Date().getTime() - lastView < 10 * 60 * 1000) { // 每十分钟看一轮
+        console.log(new Date() + "还没到查看时间");
         return;
     }
     if (seeingPage >= page || testCode) { //正在看的页
+        console.log(new Date() + "正在查看");
         return;
     }
 
-    console.log("查找页：" + page);
+    console.log(new Date() + "查看页：" + page);
     seeingPage = page;
     fetch("https://cn.classic.warcraftlogs.com/zone/reports?zone=1013&boss=725&difficulty=0&class=Druid&spec=Guardian&kills=0&duration=0&server=0&page=" + page, {
         "headers": {
