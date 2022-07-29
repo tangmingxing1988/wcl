@@ -179,6 +179,10 @@ let analyze = function (code) {
     }, function (reason) {
         failedCodes.push(code);
         console.log("失败：" + reason);
+
+        if(reason.message.indexOf("You do not have permission") >= 0){
+            fs.appendFileSync("data/per.csv", code + "\r\n");
+        }
     })
 };
 
@@ -306,7 +310,7 @@ let startRun = function () {
             if (parsingCodesSize <= 0) { //如果完成了收尾工作
                 let lines = [];
                 if(testCode){
-                    if(currentOldCodes.includes(testCode)){
+                    if(currentOldCodes.includes(testCode)  || failedCodes.includes(testCode)){
                         process.exit(0);
                     }
                     codes = testCode.split(',').filter(d => d.length == 16);
@@ -319,11 +323,12 @@ let startRun = function () {
                     
                     let oldCodes = lines.map(c => c.split(",")[9]);
                     let oldParsedKeys = lines.map(l => l.split(',')).map(e => e[11] + ":" + (parseInt(e[5]) + parseInt(e[7])));
+                    let perKeys = fs.readFileSync('data/per.csv', 'utf-8').split("\n").map(v => v.trim()).filter(v => v);
                     parsedKeys = Array.from(new Set(parsedKeys.concat(oldParsedKeys)));
                     console.log("已完成解析量" + parsedKeys.length);
                     codes = Array.from(new Set((fs.readFileSync('data/reports.csv', 'utf-8')).split("\n").map(c => c.trim()).filter(d => d.length == 16)));
                     console.log("共有" + codes.length + "个报告");
-                    codes = codes.filter(d => !oldCodes.includes(d));
+                    codes = codes.filter(d => !oldCodes.includes(d) && !perKeys.includes(d));
                 }
                 console.log("去除历史记录后有" + codes.length + "个报告");
 
